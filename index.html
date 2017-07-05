@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<title></title>
+	<link rel="stylesheet" type="text/css" href="css/cdn.datatables.net.css" />
+	<script src="js/jquery-1.12.4.js"></script>
+	<script src="js/jquery.dataTables.min.js"></script>
+	<script type="text/javascript">
+
+	var publicjson;
+			$(document).ready(function (){
+
+				$.getJSON("res.json", function(json) {
+				    //console.log(json); // this will show the info it in firebug console
+						publicjson = json;
+						var table = $('#example').DataTable({
+							data: json[0].students,
+							aaSorting:[]
+						});
+
+						var addhref="";
+						var idx=0;
+						$.each( json, function( key, value ) {
+
+							addhref+= "<a href='#' onclick='changeSchool("+idx+")'>"+ value.school_id + "." +value.school_name +"</a> &nbsp; ";
+							$("#link").empty();
+							$("#link").html(addhref);
+							idx++;
+						});
+				});
+			});
+
+			function changeSchool(schidx){
+				// console.log("school_id:", school_id);
+				// console.log("school_id:",publicjson[school_id].students);
+				$('#example').dataTable().fnClearTable();
+				$('#example').dataTable().fnAddData(publicjson[schidx].students);
+
+			}
+	</script>
+</head>
+<body>
+	<div id="link"></div>
+	<table id="example" class="display" cellspacing="0" width="100%"
+	data-column-defs='[{"targets":0,"data":"student_id"},{"targets":1,"data":"student_name"},{"targets":2,"data":"score_total1"},
+	{"targets":3,"data":"score_total2"},{"targets":4,"data":"first_choice"},{"targets":5,"data":"second_choice"}
+	,{"targets":6,"data":"accepted_option"},{"targets":7,"data":"accepted_status"}]'>
+    <thead>
+        <tr>
+            <th>ID</th>
+            <th>Name</th>
+						<th>Tot1</th>
+						<th>Tot2</th>
+						<th>First</th>
+						<th>Sec</th>
+						<th>Acc Option</th>
+						<th>Acc Status</th>
+        </tr>
+    </thead>
+    <tbody>
+    </tbody>
+</table>
+</body>
+</html>
