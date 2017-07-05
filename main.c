@@ -10,6 +10,7 @@
 struct student_item {
   int student_id;
   char student_name[300];
+int is_foreigner;
 
   int first_choice;
   int second_choice;
@@ -48,6 +49,7 @@ void add_item_student(struct school_item *s, struct school_item *outerReference,
                       int option_idx, struct student_item *p,
                       struct student_item a, int max_items, int *num_items) {
 
+                      printf("num_items:%d < max_items:%d \n", *num_items, max_items);
   if (*num_items < max_items) {
 
     // outerReference = s + *num_items;
@@ -156,6 +158,115 @@ int get_index_school(struct school_item *schools, int count_schools,
   return idx_target;
 }
 
+int cut_students_foreigner(struct school_item *schools, int count_schools,
+                        struct student_item *students, int count_students,
+                        int quota, int option_idx, int status_foreigner){
+
+  struct school_item tempsch;
+  struct student_item tempstd;
+
+  int target_count;
+  int target_option;
+  int target_quota;
+  int idx_target;
+
+
+  int count_foreigner = 0;
+  int quota_foreigner = 0;
+  int school_id = schools[option_idx].school_id;
+
+  quota_foreigner = floor(quota * 0.025);
+  if (school_id==999999){
+    quota_foreigner = 999999;
+  }
+
+  printf("school_id:%d <-> count_students:%d <->quota_foreigner: %d\n",school_id, count_students, quota_foreigner);
+  for (int student_idx = 0; student_idx < count_students - 1; student_idx++) {
+
+    printf("before:student_id:%d <->is_foreigner:%d <->sec_choice:%d <->%s "
+           "<->accepted_status:%d\n", students[student_idx].student_id,students[student_idx].is_foreigner, students[student_idx].second_choice, students[student_idx].student_name, students[student_idx].accepted_status);
+
+         if (students[student_idx].is_foreigner==1){
+            count_foreigner++;
+
+           if (count_foreigner > quota_foreigner){
+
+             tempstd.student_id = students[student_idx].student_id;
+             strcpy(tempstd.student_name, students[student_idx].student_name);
+             tempstd.is_foreigner = students[student_idx].is_foreigner;
+             tempstd.first_choice = students[student_idx].first_choice;
+             tempstd.second_choice = students[student_idx].second_choice;
+             tempstd.score_total1 = students[student_idx].score_total1;
+             tempstd.score_total2 = students[student_idx].score_total2;
+             tempstd.score_bahasa = students[student_idx].score_bahasa;
+
+
+
+             // jika status sudah lebih dari 2 maka, lempat ke trash
+             if (students[student_idx].accepted_status >= 2) {
+               printf("xif_foreigner\n");
+               target_option = 999999;
+               tempstd.accepted_option = target_option;
+               tempstd.accepted_status = 3;
+               idx_target = get_index_school(schools, count_schools, target_option);
+             } else {
+               printf("xelse_foreigner\n");
+               target_option = students[student_idx].second_choice;
+               idx_target = get_index_school(schools, count_schools, target_option);
+               if (idx_target == -1) {
+                 target_option = 999999;
+                 tempstd.accepted_option = target_option;
+                 tempstd.accepted_status = 3;
+                 idx_target = get_index_school(schools, count_schools, target_option);
+                 printf("xelse1__foreigner\n");
+               } else {
+                 tempstd.accepted_option = target_option;
+                 tempstd.accepted_status = 2;
+                 schools[idx_target].filtered = 0;
+                 status_foreigner = 0;
+                 printf("xelse2_foreigner\n");
+               } //end if idx target
+             }//end if accepted_status
+
+
+
+
+             target_count = schools[idx_target].count_students;
+             target_quota = floor(schools[idx_target].quota * 0.025);
+             if (target_option==999999){
+               target_quota = 999999;
+             }
+
+             printf("after:student_id:%d <->sec_choice:%d <-> idx_target:%d <-> "
+                    "target_count:%d<->%s "
+                    "<->accepted_status:%d<->target_quota_foreigner:%d\n",
+                    students[student_idx].student_id, target_option, idx_target,
+                    target_count, tempstd.student_name, tempstd.accepted_status, target_quota);
+
+             add_item_student(schools, schools, idx_target, students, tempstd,
+                              target_quota, &target_count);
+             delete_item_student(students, student_idx, &count_students);
+             //count_students--;
+
+             schools[idx_target].count_students = target_count;
+             student_idx--;
+           }//end if check count_foreigner > quota_foreigner
+
+
+
+
+
+         }//end if is foreigner
+
+
+  } //end for
+
+  schools[option_idx].count_students = count_students;
+
+
+	return status_foreigner;
+}
+
 int cut_option_under_pg(struct school_item *schools, int count_schools,
                         struct student_item *students, int count_students,
                         int quota, int option_idx, int status) {
@@ -177,18 +288,19 @@ int cut_option_under_pg(struct school_item *schools, int count_schools,
 
     tempstd.student_id = students[student_idx].student_id;
     strcpy(tempstd.student_name, students[student_idx].student_name);
+    tempstd.is_foreigner = students[student_idx].is_foreigner;
     tempstd.first_choice = students[student_idx].first_choice;
     tempstd.second_choice = students[student_idx].second_choice;
     tempstd.score_total1 = students[student_idx].score_total1;
     tempstd.score_total2 = students[student_idx].score_total2;
     tempstd.score_bahasa = students[student_idx].score_bahasa;
 
-    printf("before:student_id:%d <->sec_choice:%d <-> idx_target:%d <->%s "
-           "<->accepted_status:%d\n",
-           students[student_idx].student_id,
-           students[student_idx].second_choice, idx_target,
-           students[student_idx].student_name,
-           students[student_idx].accepted_status);
+    // printf("before:student_id:%d <->sec_choice:%d <-> idx_target:%d <->%s "
+    //        "<->accepted_status:%d\n",
+    //        students[student_idx].student_id,
+    //        students[student_idx].second_choice, idx_target,
+    //        students[student_idx].student_name,
+    //        students[student_idx].accepted_status);
 
     // jika status sudah lebih dari 2 maka, lempat ke trash
     if (students[student_idx].accepted_status >= 2) {
@@ -220,11 +332,7 @@ int cut_option_under_pg(struct school_item *schools, int count_schools,
 
     target_count = schools[idx_target].count_students;
 
-    printf("after:student_id:%d <->sec_choice:%d <-> idx_target:%d <-> "
-           "target_count:%d<->%s "
-           "<->accepted_status:%d\n",
-           students[student_idx].student_id, target_option, idx_target,
-           target_count, tempstd.student_name, tempstd.accepted_status);
+
 
     add_item_student(schools, schools, idx_target, students, tempstd,
                      target_quota, &target_count);
@@ -243,7 +351,7 @@ int cut_option_under_pg(struct school_item *schools, int count_schools,
 }
 
 int do_selection(struct school_item *schools_data, int count_schools) {
-  int status = 1;
+  int status = 1; int status_foreigner=1;
 
   for (int option_idx = 0; option_idx < count_schools; option_idx++) {
     // printf("sizeof: %zu\n", sizeof(schools_data[option_idx].datas));
@@ -256,6 +364,11 @@ int do_selection(struct school_item *schools_data, int count_schools) {
       int count_students = schools_data[option_idx].count_students;
 
       printf("school_id:%d<->", schools_data[option_idx].school_id);
+        status_foreigner = cut_students_foreigner(schools_data, count_schools,
+                                     schools_data[option_idx].datas,
+                                     count_students, quota, option_idx, status_foreigner);
+      quota = schools_data[option_idx].quota;
+      count_students = schools_data[option_idx].count_students;
 
       if (count_students > quota) {
         // potong data siswa
@@ -270,7 +383,7 @@ int do_selection(struct school_item *schools_data, int count_schools) {
     } // end if filtered
   }   // end for
 
-  if (status == 0) {
+  if ((status == 0) || (status_foreigner==0)) {
     do_selection(schools_data, count_schools);
   }
 }
@@ -372,6 +485,8 @@ void display_data(struct school_item *outerArray, int max_items) {
                               outerArray[i].datas[j].student_id);
       cJSON_AddStringToObject(bfield, "student_name",
                               outerArray[i].datas[j].student_name);
+      cJSON_AddNumberToObject(bfield, "is_foreigner",
+                              outerArray[i].datas[j].is_foreigner);
 
       cJSON_AddNumberToObject(bfield, "score_total1",
                               outerArray[i].datas[j].score_total1);
@@ -439,7 +554,7 @@ int main() {
   db = mysql_init(NULL);
 
   if (mysql_real_connect(db, "localhost", "root", "password",
-                         "ppdb2017-jabar-dev", 0, NULL, 0) == NULL) {
+                         "jabar-dev", 0, NULL, 0) == NULL) {
     abort();
   }
   printf("connect db \n");
@@ -454,7 +569,7 @@ int main() {
           "option_name,s.is_border,substring(s.code,1,1) as "
           "code,s.foreigner_percentage FROM ppdb_school s INNER JOIN "
           "ppdb_option o ON ( s.id = o.school ) where "
-          "(substring(s.code,1,1)=4) and o.type='academic' "
+          "(substring(s.code,1,1)=4) and o.type='academic'  and o.id in (1,2,3,4,5)"
           "ORDER BY s.code, "
           "o.id");
 
@@ -492,7 +607,7 @@ int main() {
             "SELECT "
             "id,type,registration,name,score_bahasa,score_english,"
             "score_math,score_physics,score_total1,score_total2,range1,range2,"
-            "score_range1,score_range2,first_choice,second_choice,status FROM "
+            "score_range1,score_range2,first_choice,second_choice,status,is_foreigner FROM "
             "ppdb_registration_academic o "
             "where "
             "o.type = 'academic' and o.first_choice=%d and status = "
@@ -523,6 +638,8 @@ int main() {
           safeAtoi(row_students[0]);
       strcpy(outerArray[num_schools].datas[num_students].student_name,
              row_students[3]);
+      outerArray[num_schools].datas[num_students].is_foreigner =
+          safeAtoi(row_students[17]);
 
       outerArray[num_schools].datas[num_students].score_total1 =
           safeAtoi(row_students[8]);
@@ -571,12 +688,12 @@ int main() {
 
   outerArray[num_schools].school_id = 999999;
   strcpy(outerArray[num_schools].school_name, "trash");
-  outerArray[num_schools].quota = 9999;
+  outerArray[num_schools].quota = 999999;
   outerArray[num_schools].count_students = 0;
 
   printf("\n");
 
-  display_data(outerArray, count_schools);
+  //display_data(outerArray, count_schools);
   do_selection(outerArray, count_schools);
   display_data(outerArray, count_schools);
 
