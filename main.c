@@ -3,6 +3,7 @@
 #include <string.h>
 #include <malloc.h>
 #include <stdint.h>
+#include <math.h>
 #include <mysql/mysql.h>
 #include <mysql/my_global.h>
 #include "cJSON-master/cJSON.h"
@@ -388,6 +389,60 @@ int do_selection(struct school_item *schools_data, int count_schools) {
   }
 }
 
+char* join_strings(char* strings[], char* seperator, int count) {
+    char* str = NULL;             /* Pointer to the joined strings  */
+    size_t total_length = 0;      /* Total length of joined strings */
+    int i = 0;                    /* Loop counter                   */
+
+    /* Find total length of joined strings */
+    for (i = 0; i < count; i++) total_length += strlen(strings[i]);
+    total_length++;     /* For joined string terminator */
+    total_length += strlen(seperator) * (count - 1); // for seperators
+
+    str = (char*) malloc(total_length);  /* Allocate memory for joined strings */
+    str[0] = '\0';                      /* Empty string we can append to      */
+
+    /* Append all the strings */
+    for (i = 0; i < count; i++) {
+        strcat(str, strings[i]);
+        if (i < (count - 1)) strcat(str, seperator);
+    }
+
+    return str;
+}
+
+void finish_with_error(MYSQL *db)
+{
+  fprintf(stderr, "%s\n", mysql_error(db));
+  mysql_close(db);
+  exit(1);
+}
+
+void insert_filtered(MYSQL *db, struct school_item *outerArray, int max_items){
+  if (mysql_query(db, "TRUNCATE ppdb_filtered_academic")) {
+    finish_with_error(db);
+  }
+  for (int i = 0; i < max_items; i++) {
+    char *sql_join[1500];
+    //outerArray[i].school_id
+    for (int j = 0; j < outerArray[i].count_students; j++) {
+      //outerArray[i].datas[j].student_id
+      char sql_insert_student[300];
+      sprintf(sql_insert_student,"INSERT INTO ppdb_filtered_academic (`option`, `registration`, `is_foreigner`) VALUES (%d,%d,%d);", outerArray[i].datas[j].accepted_option, outerArray[i].datas[j].student_id, outerArray[i].datas[j].is_foreigner);
+      //mysql_query(db, sql_insert_student);
+      //sql_join[j]=sql_insert_student;
+      printf("insert_filtered:%s\n", sql_insert_student);
+      if (mysql_query(db, sql_insert_student)) {
+        finish_with_error(db);
+      }
+
+    }//end for students
+
+  }//end for schools
+}
+
+
+
 /* Create a bunch of objects as demonstration. */
 static int print_preallocated(cJSON *root) {
   /* declarations */
@@ -680,7 +735,7 @@ int main() {
     num_schools++;
   }
   mysql_free_result(q_schools);
-  mysql_close(db);
+
 
   // add trash school
   outerReference = outerArray + num_schools;
@@ -695,6 +750,8 @@ int main() {
 
   //display_data(outerArray, count_schools);
   do_selection(outerArray, count_schools);
+  insert_filtered(db,outerArray, count_schools);
+  mysql_close(db);
   display_data(outerArray, count_schools);
 
   return 0;
